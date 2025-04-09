@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task42c-calculator-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: task42c-calculator-api
+  template:
+    metadata:
+      labels:
+        app: task42c-calculator-api
+    spec:
+      containers:
+      - name: task42c-calculator-api
+        image: gcr.io/helpful-skyline-422502-u2/task42c-calculator-api:latest
+        ports:
+        - containerPort: 3000
