@@ -17,3 +17,6 @@ spec:
         image: gcr.io/helpful-skyline-422502-u2/task42c-calculator-api:latest
         ports:
         - containerPort: 3000
+        env:
+        - name: MONGO_URI
+          value: mongodb://mongoadmin:password123@mongo:27017/

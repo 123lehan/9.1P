@@ -1,151 +1,122 @@
 const express = require('express');
+const { MongoClient } = require('mongodb');
+require('dotenv').config();
+
 const app = express();
 const port = 3000;
 
-// Addition
-app.get('/add', (req, res) => {
-    const { num1, num2 } = req.query;
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
+const client = new MongoClient(mongoUri);
 
-// Check if both parameters are provided
+let historyCollection;
 
-if (!num1 || !num2) {
-    return res.status(400).send("Error: Missing parameters. Please provide num1 and num2.");
+async function connectToMongo() {
+    try {
+        await client.connect();
+        const db = client.db('calculator');
+        historyCollection = db.collection('history');
+        console.log("✅ Connected to MongoDB");
+    } catch (err) {
+        console.error("❌ MongoDB connection error:", err);
+    }
 }
 
-const result = Number(num1) + Number(num2);
-res.send(`Result: ${result}`)
+async function logToMongo(operation, num1, num2, result) {
+    if (historyCollection) {
+        await historyCollection.insertOne({
+            timestamp: new Date(),
+            operation,
+            num1: Number(num1),
+            num2: num2 !== undefined ? Number(num2) : null,
+            result
+        });
+    }
+}
+
+// --- Operations ---
+
+app.get('/add', async (req, res) => {
+    const { num1, num2 } = req.query;
+    if (!num1 || !num2) return res.status(400).send("Missing num1 or num2");
+    const result = Number(num1) + Number(num2);
+    await logToMongo('add', num1, num2, result);
+    res.send(`Result: ${result}`);
 });
 
-// Subtraction
-app.get('/subtract', (req, res) => {
-  const { num1, num2 } = req.query;
-
-  // Check if both parameters are provided
-  if (!num1 || !num2) {
-    return res.status(400).send("Error: Missing parameters. Please provide num1 and num2.");
-  }
-
-  // Check if both parameters are valid numbers
-  if (isNaN(num1) || isNaN(num2)) {
-    return res.status(400).send("Error: Both parameters must be valid numbers.");
-  }
-
-  const result = Number(num1) - Number(num2);
-  res.send(`Result: ${result}`);
+app.get('/subtract', async (req, res) => {
+    const { num1, num2 } = req.query;
+    if (!num1 || !num2 || isNaN(num1) || isNaN(num2))
+        return res.status(400).send("Invalid or missing inputs");
+    const result = Number(num1) - Number(num2);
+    await logToMongo('subtract', num1, num2, result);
+    res.send(`Result: ${result}`);
 });
 
-// Multiplication
-app.get('/multiply', (req, res) => {
-  const { num1, num2 } = req.query;
-
-  // Check if both parameters are provided
-  if (!num1 || !num2) {
-    return res.status(400).send("Error: Missing parameters. Please provide num1 and num2.");
-  }
-
-  // Check if both parameters are valid numbers
-  if (isNaN(num1) || isNaN(num2)) {
-    return res.status(400).send("Error: Both parameters must be valid numbers.");
-  }
-
-  const result = Number(num1) * Number(num2);
-  res.send(`Result: ${result}`);
+app.get('/multiply', async (req, res) => {
+    const { num1, num2 } = req.query;
+    if (!num1 || !num2 || isNaN(num1) || isNaN(num2))
+        return res.status(400).send("Invalid or missing inputs");
+    const result = Number(num1) * Number(num2);
+    await logToMongo('multiply', num1, num2, result);
+    res.send(`Result: ${result}`);
 });
 
-// Division
-app.get('/divide', (req, res) => {
-  const { num1, num2 } = req.query;
-
-  // Check if both parameters are provided
-  if (!num1 || !num2) {
-    return res.status(400).send("Error: Missing parameters. Please provide num1 and num2.");
-  }
-
-  // Check if both parameters are valid numbers
-  if (isNaN(num1) || isNaN(num2)) {
-    return res.status(400).send("Error: Both parameters must be valid numbers.");
-  }
-
-  // Check for division by zero
-  if (num2 == 0) {
-    return res.status(400).send("Error: Division by zero is not allowed.");
-  }
-
-  const result = Number(num1) / Number(num2);
-  res.send(`Result: ${result}`);
+app.get('/divide', async (req, res) => {
+    const { num1, num2 } = req.query;
+    if (!num1 || !num2 || isNaN(num1) || isNaN(num2) || Number(num2) === 0)
+        return res.status(400).send("Invalid or missing inputs / division by zero");
+    const result = Number(num1) / Number(num2);
+    await logToMongo('divide', num1, num2, result);
+    res.send(`Result: ${result}`);
 });
 
-// Exponentiation
-app.get('/exponentiate', (req, res) => {
-  const { num1, num2 } = req.query;
-
-  // Check if both parameters are provided
-  if (!num1 || !num2) {
-    return res.status(400).send("Error: Missing parameters. Please provide num1 and num2.");
-  }
-
-  // Check if both parameters are valid numbers
-  if (isNaN(num1) || isNaN(num2)) {
-    return res.status(400).send("Error: Both parameters must be valid numbers.");
-  }
-
-  const result = Math.pow(Number(num1), Number(num2));
-  res.send(`Result: ${result}`);
+app.get('/exponentiate', async (req, res) => {
+    const { num1, num2 } = req.query;
+    if (!num1 || !num2 || isNaN(num1) || isNaN(num2))
+        return res.status(400).send("Invalid or missing inputs");
+    const result = Math.pow(Number(num1), Number(num2));
+    await logToMongo('exponentiate', nu1, num2, result);
+    res.send(`Result: ${result}`);
 });
 
-// Square Root
-app.get('/sqrt', (req, res) => {
-  const { num1 } = req.query;
-
-  // Check if the parameter is provided
-  if (!num1) {
-    return res.status(400).send("Error: Missing parameter. Please provide num1.");
-  }
-
-  // Check if the parameter is a valid number
-  if (isNaN(num1)) {
-    return res.status(400).send("Error: The parameter must be a valid number.");
-  }
-
-  if (num1 < 0) {
-    return res.status(400).send("Error: Cannot calculate the square root of a negative number.");
-  }
-
-  const result = Math.sqrt(Number(num1));
-  res.send(`Result: ${result}`);
+app.get('/sqrt', async (req, res) => {
+    const { num1 } = req.query;
+    if (!num1 || isNaN(num1) || Number(num1) < 0)
+        return res.status(400).send("Invalid or missing input");
+    const result = Math.sqrt(Number(num1));
+    await logToMongo('sqrt', num1, null, result);
+    res.send(`Result: ${result}`);
 });
 
-// Modulo
-app.get('/modulo', (req, res) => {
-  const { num1, num2 } = req.query;
-
-  // Check if both parameters are provided
-  if (!num1 || !num2) {
-    return res.status(400).send("Error: Missing parameters. Please provide num1 and num2.");
-  }
-
-  // Check if both parameters are valid numbers
-  if (isNaN(num1) || isNaN(num2)) {
-    return res.status(400).send("Error: Both parameters must be valid numbers.");
-  }
-
-  const result = Number(num1) % Number(num2);
-  res.send(`Result: ${result}`);
+app.get('/modulo', async (req, res) => {
+    const { num1, num2 } = req.query;
+    if (!num1 || !num2 || isNaN(num1) || isNaN(num2))
+        return res.status(400).send("Invalid or missing inputs");
+    const result = Number(num1) % Number(num2);
+    await logToMongo('modulo', num1, num2, result);
+    res.send(`Result: ${result}`);
 });
 
-// Handle unsupported operations (catch-all route)
+// 🆕 GET /history
+app.get('/history', async (req, res) => {
+    if (!historyCollection) return res.status(500).send("Database not connected");
+    const history = await historyCollection.find().sort({ timestamp: -1 }).toArray();
+    res.json(history);
+});
+
+// Catch-all for unsupported endpoints
 app.get('*', (req, res) => {
-  res.status(404).send("Error: Unsupported operation. Please check the API documentation for valid endpoints.");
+    res.status(404).send("Error: Unsupported operation. Please check the API documentation for valid endpoints.");
 });
 
-// Global error handler (catch unexpected errors)
+// Error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send("Something went wrong! Please try again later.");
+    console.error(err.stack);
+    res.status(500).send("Something went wrong! Please try again later.");
 });
 
-// Start the server
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Calculator microservice is running on http://localhost:${port}`);
-  });
-  
+// Start server and connect to DB
+app.listen(port, '0.0.0.0', async () => {
+    await connectToMongo();
+    console.log(`🚀 Calculator API running at http://localhost:${port}`);
+});
